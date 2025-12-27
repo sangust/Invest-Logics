@@ -16,16 +16,16 @@ def create_user(email, password_hash):
     cursor.close()
     conn.close()
 
-def login_user(email):
+def check_login_user(email: tuple):
     conn = get_conn()
     cursor = conn.cursor()
 
     cursor.execute('''
                     SELECT password_hash FROM Users
                     WHERE email = %s''', (email,))
-    
-    user = cursor.fetchone()
+
+    pasword_hash = cursor.fetchone()
     cursor.close()
     conn.close()
-    return user
+    return pasword_hash
     

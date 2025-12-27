@@ -1,12 +1,604 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>cotas</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <title>B3 - Painel de Mercado Brasileiro</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Configurações de Cores e Estilos Customizados -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        b3: {
+                            blue: '#00297A',
+                            yellow: '#FFDF00',
+                            dark: '#0f172a',
+                            card: '#1e293b'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        /* Animação do Ticker (Letreiro) */
+        @keyframes ticker {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
+        .ticker-wrap {
+            width: 100%;
+            overflow: hidden;
+            white-space: nowrap;
+            box-sizing: border-box;
+        }
+        .ticker-move {
+            display: inline-block;
+            white-space: nowrap;
+            padding-right: 100%;
+            animation: ticker 30s linear infinite;
+        }
+        .ticker-item {
+            display: inline-block;
+            padding: 0 2rem;
+        }
+        
+        /* Scrollbar customizada */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569; 
+        }
+    </style>
 </head>
-<body>
-    <p>Hello word</p>
+<body class="bg-b3-dark text-slate-200 font-sans antialiased min-h-screen flex flex-col">
+
+    <!-- Header / Navbar -->
+    <header class="bg-b3-blue border-b border-blue-900 shadow-lg z-50">
+        <div class="container mx-auto px-4 h-16 flex items-center justify-between">
+            <!-- Logo area -->
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-white rounded flex items-center justify-center font-bold text-b3-blue text-xl border-2 border-b3-yellow">
+                    B3
+                </div>
+                <div>
+                    <h1 class="font-bold text-white leading-tight text-lg">Bolsa do Brasil</h1>
+                    <p class="text-xs text-blue-200">Dados de Mercado</p>
+                </div>
+            </div>
+
+            <!-- Search Bar (Hidden on mobile) -->
+            <div class="hidden md:flex flex-1 max-w-md mx-8 relative">
+                <input type="text" placeholder="Buscar ativo (ex: PETR4)" class="w-full bg-blue-900/50 text-white border border-blue-700 rounded-full py-2 px-4 focus:outline-none focus:border-b3-yellow transition-colors placeholder-blue-300">
+                <button class="absolute right-3 top-2.5 text-blue-300 hover:text-white">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+
+            <!-- Market Status & User -->
+            <div class="flex items-center gap-4">
+                <div class="hidden sm:block text-right">
+                    <div class="text-xs text-green-400 font-bold flex items-center justify-end gap-1">
+                        <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                        MERCADO ABERTO
+                    </div>
+                    <div id="clock" class="text-xs text-slate-300 font-mono">10:00:00</div>
+                </div>
+                <!-- Adicionado ID user-profile-btn -->
+                <button id="user-profile-btn" class="w-10 h-10 rounded-full bg-blue-800 hover:bg-blue-700 flex items-center justify-center transition-colors relative">
+                    <i class="fas fa-user text-white"></i>
+                    <span class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-b3-blue"></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Ticker Tape (Letreiro) -->
+    <div class="bg-slate-900 border-b border-slate-700 py-2 overflow-hidden shadow-inner">
+        <div class="ticker-wrap">
+            <div class="ticker-move text-sm font-mono" id="ticker-content">
+                <!-- Preenchido via JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Conteúdo Principal -->
+    <main class="flex-1 container mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6 relative z-0">
+        
+        <!-- Coluna Esquerda: Gráfico Principal e Destaques (8 colunas) -->
+        <div class="lg:col-span-8 space-y-6">
+            
+            <!-- Índice Principal Card -->
+            <div class="bg-b3-card rounded-xl p-6 border border-slate-700 shadow-xl">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-white flex items-center gap-2">
+                            <i class="fas fa-chart-line text-b3-yellow"></i> IBOVESPA
+                        </h2>
+                        <div class="flex items-baseline gap-3 mt-1">
+                            <span class="text-4xl font-mono font-bold text-white" id="ibov-price">128.450,30</span>
+                            <span class="text-lg font-bold text-green-500 bg-green-500/10 px-2 py-0.5 rounded flex items-center gap-1">
+                                <i class="fas fa-arrow-up text-xs"></i> 0,85%
+                            </span>
+                        </div>
+                        <p class="text-slate-400 text-sm mt-1">Volume: R$ 22,4 Bi</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button class="px-3 py-1 text-xs rounded bg-slate-700 text-white hover:bg-slate-600 transition">1D</button>
+                        <button class="px-3 py-1 text-xs rounded bg-b3-blue text-white ring-1 ring-b3-yellow">1S</button>
+                        <button class="px-3 py-1 text-xs rounded bg-slate-700 text-white hover:bg-slate-600 transition">1M</button>
+                    </div>
+                </div>
+                
+                <!-- Área do Gráfico -->
+                <div class="relative h-72 w-full">
+                    <canvas id="mainChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Maiores Altas e Baixas -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Altas -->
+                <div class="bg-b3-card rounded-xl border border-slate-700 p-4">
+                    <h3 class="text-green-400 font-bold mb-4 flex items-center gap-2">
+                        <i class="fas fa-arrow-trend-up"></i> Maiores Altas
+                    </h3>
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center p-2 hover:bg-slate-700/50 rounded transition cursor-pointer group">
+                            <div>
+                                <span class="font-bold block text-white">MGLU3</span>
+                                <span class="text-xs text-slate-400">Magalu</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="block font-mono text-green-400">+5,20%</span>
+                                <span class="text-xs text-slate-300">R$ 2,15</span>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center p-2 hover:bg-slate-700/50 rounded transition cursor-pointer group">
+                            <div>
+                                <span class="font-bold block text-white">CVCB3</span>
+                                <span class="text-xs text-slate-400">CVC Brasil</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="block font-mono text-green-400">+3,45%</span>
+                                <span class="text-xs text-slate-300">R$ 3,40</span>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center p-2 hover:bg-slate-700/50 rounded transition cursor-pointer group">
+                            <div>
+                                <span class="font-bold block text-white">HAPV3</span>
+                                <span class="text-xs text-slate-400">Hapvida</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="block font-mono text-green-400">+2,80%</span>
+                                <span class="text-xs text-slate-300">R$ 4,10</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Baixas -->
+                <div class="bg-b3-card rounded-xl border border-slate-700 p-4">
+                    <h3 class="text-red-400 font-bold mb-4 flex items-center gap-2">
+                        <i class="fas fa-arrow-trend-down"></i> Maiores Baixas
+                    </h3>
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center p-2 hover:bg-slate-700/50 rounded transition cursor-pointer group">
+                            <div>
+                                <span class="font-bold block text-white">PETR4</span>
+                                <span class="text-xs text-slate-400">Petrobras</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="block font-mono text-red-400">-1,20%</span>
+                                <span class="text-xs text-slate-300">R$ 36,50</span>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center p-2 hover:bg-slate-700/50 rounded transition cursor-pointer group">
+                            <div>
+                                <span class="font-bold block text-white">VALE3</span>
+                                <span class="text-xs text-slate-400">Vale</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="block font-mono text-red-400">-0,95%</span>
+                                <span class="text-xs text-slate-300">R$ 68,20</span>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center p-2 hover:bg-slate-700/50 rounded transition cursor-pointer group">
+                            <div>
+                                <span class="font-bold block text-white">BBDC4</span>
+                                <span class="text-xs text-slate-400">Bradesco</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="block font-mono text-red-400">-0,50%</span>
+                                <span class="text-xs text-slate-300">R$ 14,30</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Coluna Direita: Câmbio e Notícias (4 colunas) -->
+        <div class="lg:col-span-4 space-y-6">
+            
+            <!-- Câmbio e Commodities -->
+            <div class="bg-b3-card rounded-xl border border-slate-700 p-5">
+                <h3 class="text-white font-bold mb-4 border-b border-slate-700 pb-2">Moedas & Commodities</h3>
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded bg-green-900 text-green-300 flex items-center justify-center font-bold">$</div>
+                            <div>
+                                <span class="block text-sm font-bold text-white">Dólar (USD)</span>
+                                <span class="text-xs text-slate-400">Comercial</span>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="font-mono text-white">R$ 5,15</div>
+                            <div class="text-xs text-green-400">+0,12%</div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-between items-center">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded bg-blue-900 text-blue-300 flex items-center justify-center font-bold">€</div>
+                            <div>
+                                <span class="block text-sm font-bold text-white">Euro (EUR)</span>
+                                <span class="text-xs text-slate-400">Comercial</span>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="font-mono text-white">R$ 5,58</div>
+                            <div class="text-xs text-red-400">-0,05%</div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between items-center">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded bg-yellow-900 text-yellow-300 flex items-center justify-center font-bold"><i class="fas fa-cube"></i></div>
+                            <div>
+                                <span class="block text-sm font-bold text-white">Ouro (OZ1D)</span>
+                                <span class="text-xs text-slate-400">BM&F</span>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="font-mono text-white">R$ 325,00</div>
+                            <div class="text-xs text-green-400">+1,10%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notícias Rápidas -->
+            <div class="bg-b3-card rounded-xl border border-slate-700 p-5 flex flex-col h-auto">
+                <h3 class="text-white font-bold mb-4 border-b border-slate-700 pb-2 flex justify-between">
+                    <span>Notícias</span>
+                    <span class="text-xs text-b3-yellow cursor-pointer hover:underline">Ver todas</span>
+                </h3>
+                <div class="space-y-4 flex-1">
+                    <article class="group cursor-pointer">
+                        <span class="text-[10px] text-blue-400 font-bold uppercase">Mercado</span>
+                        <h4 class="text-sm font-medium text-slate-200 group-hover:text-b3-yellow transition-colors leading-snug">
+                            Boletim Focus projeta inflação menor para 2024 e PIB estável.
+                        </h4>
+                        <span class="text-[10px] text-slate-500">Há 15 min</span>
+                    </article>
+                    
+                    <article class="group cursor-pointer border-t border-slate-800 pt-3">
+                        <span class="text-[10px] text-blue-400 font-bold uppercase">Empresas</span>
+                        <h4 class="text-sm font-medium text-slate-200 group-hover:text-b3-yellow transition-colors leading-snug">
+                            Petrobras anuncia nova política de dividendos e ações reagem.
+                        </h4>
+                        <span class="text-[10px] text-slate-500">Há 42 min</span>
+                    </article>
+
+                    <article class="group cursor-pointer border-t border-slate-800 pt-3">
+                        <span class="text-[10px] text-blue-400 font-bold uppercase">Internacional</span>
+                        <h4 class="text-sm font-medium text-slate-200 group-hover:text-b3-yellow transition-colors leading-snug">
+                            FED mantém juros inalterados nos EUA; mercado aguarda ata.
+                        </h4>
+                        <span class="text-[10px] text-slate-500">Há 1 hora</span>
+                    </article>
+                </div>
+            </div>
+
+            <!-- Card Publicidade/CTA -->
+            <div class="bg-gradient-to-br from-b3-blue to-blue-900 rounded-xl p-5 text-center border border-b3-yellow/30 shadow-lg">
+                <i class="fas fa-graduation-cap text-3xl text-b3-yellow mb-2"></i>
+                <h3 class="font-bold text-white mb-2">Aprenda a Investir</h3>
+                <p class="text-xs text-blue-200 mb-4">Cursos gratuitos da B3 Educação para começar hoje.</p>
+                <button class="w-full py-2 bg-b3-yellow text-blue-900 font-bold rounded hover:bg-yellow-400 transition text-sm">
+                    Acessar Hub
+                </button>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Modal de Login (Substitui a antiga gaveta de perfil) -->
+    <div id="login-modal" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4">
+        <!-- Overlay escuro com blur -->
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity duration-300 opacity-0" id="login-overlay"></div>
+        
+        <!-- Card de Login Centralizado -->
+        <div class="relative bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-md p-8 transform transition-all duration-300 scale-95 opacity-0" id="login-content">
+            <!-- Botão Fechar -->
+            <button id="close-login-btn" class="absolute top-4 right-4 text-slate-500 hover:text-white transition">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+
+            <!-- Cabeçalho do Login -->
+            <div class="text-center mb-8">
+                <div class="w-14 h-14 bg-white rounded-lg flex items-center justify-center text-2xl font-bold text-b3-blue border-2 border-b3-yellow mx-auto mb-4 shadow-lg shadow-blue-900/50">
+                    B3
+                </div>
+                <h2 class="text-2xl font-bold text-white">Acesse sua conta</h2>
+                <p class="text-slate-400 text-sm mt-2">Gerencie seus investimentos em tempo real</p>
+            </div>
+
+            <!-- Formulário -->
+            <form class="space-y-5" onsubmit="event.preventDefault();">
+                <div>
+                    <label class="block text-sm font-bold text-slate-300 mb-2">E-mail</label>
+                    <div class="relative group">
+                        <span class="absolute left-3 top-3 text-slate-500 group-focus-within:text-b3-yellow transition-colors"><i class="fas fa-envelope"></i></span>
+                        <input id="inputEmail" type="email" placeholder="seu@email.com" class="w-full bg-slate-800 border border-slate-700 text-white rounded-lg py-2.5 pl-10 pr-4 focus:outline-none focus:border-b3-yellow focus:ring-1 focus:ring-b3-yellow transition-colors placeholder-slate-600">
+                    </div>
+                </div>
+                
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="block text-sm font-bold text-slate-300">Senha</label>
+                        <a href="#" class="text-xs text-b3-yellow hover:underline">Esqueceu a senha?</a>
+                    </div>
+                    <div class="relative group">
+                        <span class="absolute left-3 top-3 text-slate-500 group-focus-within:text-b3-yellow transition-colors"><i class="fas fa-lock"></i></span>
+                        <input id="inputPassword" type="password" placeholder="••••••••" class="w-full bg-slate-800 border border-slate-700 text-white rounded-lg py-2.5 pl-10 pr-4 focus:outline-none focus:border-b3-yellow focus:ring-1 focus:ring-b3-yellow transition-colors placeholder-slate-600">
+                    </div>
+                </div>
+
+                <button class="w-full bg-b3-yellow text-blue-900 font-bold py-3 rounded-lg hover:bg-yellow-400 transition transform active:scale-[0.98] shadow-lg shadow-yellow-500/20 mt-2" onclick="enviarParaPython()">
+                    ENTRAR
+                </button>
+            </form>
+
+            <div class="mt-8 text-center border-t border-slate-800 pt-6">
+                <p class="text-sm text-slate-400">
+                    Não tem uma conta? <a href="#" class="text-b3-yellow font-bold hover:underline">Abra grátis</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer Simples -->
+    <footer class="bg-slate-950 border-t border-slate-800 py-6 mt-6">
+        <div class="container mx-auto px-4 text-center">
+            <p class="text-slate-500 text-xs mb-2">As cotações são demonstrativas e possuem delay simulado de 15 minutos.</p>
+            <p class="text-slate-600 text-[10px]">© 2026 B3 S.A. - Brasil, Bolsa, Balcão. Todos os direitos reservados.</p>
+        </div>
+    </footer>
+
+    <!-- Scripts de Lógica -->
+    <script>
+        async function enviarParaPython() {
+            const emailDigitado = document.getElementById('inputEmail').value;
+            const passwordDigitada = document.getElementById('inputPassword').value;
+            
+            // Prepara os dados
+            const data = { email: emailDigitado ,
+                password: passwordDigitada
+            };
+
+            try {
+                // Faz a chamada para o Python (Fetch API)
+                const response = await fetch('http://127.0.0.1:5000/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data) // Transforma o objeto JS em texto JSON
+                });
+
+                // Espera a resposta do Python
+                const jsonResposta = await response.json();
+                
+                // Mostra na tela
+                document.getElementById('resposta').innerText = jsonResposta.mensagem;
+                
+            } catch (erro) {
+                console.error('Erro:', erro);
+                document.getElementById('resposta').innerText = "Erro ao conectar com o Python.";
+            }
+        }
+        // --- 1. Relógio ---
+        function updateClock() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('pt-BR');
+            document.getElementById('clock').innerText = timeString;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // --- Lógica do Modal de Login ---
+        const profileBtn = document.getElementById('user-profile-btn');
+        const loginModal = document.getElementById('login-modal');
+        const loginContent = document.getElementById('login-content');
+        const closeLoginBtn = document.getElementById('close-login-btn');
+        const loginOverlay = document.getElementById('login-overlay');
+
+        function openLogin() {
+            loginModal.classList.remove('hidden');
+            // Pequeno delay para permitir renderização antes da transição CSS
+            setTimeout(() => {
+                loginOverlay.classList.remove('opacity-0');
+                loginContent.classList.remove('opacity-0');
+                loginContent.classList.remove('scale-95');
+                loginContent.classList.add('scale-100');
+            }, 10);
+        }
+
+        function closeLogin() {
+            loginOverlay.classList.add('opacity-0');
+            loginContent.classList.add('opacity-0');
+            loginContent.classList.add('scale-95');
+            loginContent.classList.remove('scale-100');
+            
+            // Espera a animação (300ms) terminar antes de esconder o elemento
+            setTimeout(() => {
+                loginModal.classList.add('hidden');
+            }, 300);
+        }
+
+        profileBtn.addEventListener('click', openLogin);
+        closeLoginBtn.addEventListener('click', closeLogin);
+        loginOverlay.addEventListener('click', closeLogin);
+
+        // --- 2. Dados do Ticker ---
+        const tickerData = [
+            { symbol: "VALE3", price: 68.20, change: -0.95 },
+            { symbol: "PETR4", price: 36.50, change: -1.20 },
+            { symbol: "ITUB4", price: 32.40, change: 0.45 },
+            { symbol: "BBAS3", price: 56.80, change: 1.10 },
+            { symbol: "B3SA3", price: 11.20, change: -0.30 },
+            { symbol: "WEGE3", price: 39.90, change: 2.15 },
+            { symbol: "PRIO3", price: 44.10, change: -0.50 },
+            { symbol: "MGLU3", price: 2.15, change: 5.20 },
+            { symbol: "RENT3", price: 52.30, change: 0.80 },
+            { symbol: "ABEV3", price: 12.90, change: -0.10 }
+        ];
+
+        const tickerContainer = document.getElementById('ticker-content');
+        
+        // Gera o HTML do ticker duplicado para efeito infinito
+        const generateTickerHtml = () => {
+            return tickerData.map(stock => {
+                const colorClass = stock.change >= 0 ? 'text-green-400' : 'text-red-400';
+                const arrow = stock.change >= 0 ? '▲' : '▼';
+                return `
+                    <div class="ticker-item">
+                        <span class="font-bold text-white">${stock.symbol}</span>
+                        <span class="text-slate-300 mx-1">R$ ${stock.price.toFixed(2)}</span>
+                        <span class="${colorClass} text-xs font-bold">${arrow} ${Math.abs(stock.change).toFixed(2)}%</span>
+                    </div>
+                `;
+            }).join('');
+        };
+        // Duplicamos o conteúdo para garantir o loop visual sem buracos
+        tickerContainer.innerHTML = generateTickerHtml() + generateTickerHtml() + generateTickerHtml();
+
+        // --- 3. Simulação de Preços Vivos (Efeito Visual) ---
+        // Altera levemente os preços no ticker para parecer ativo
+        setInterval(() => {
+            const items = document.querySelectorAll('.ticker-item span.text-slate-300');
+            // Seleciona um item aleatório para atualizar visualmente
+            const randomIndex = Math.floor(Math.random() * items.length);
+            const el = items[randomIndex];
+            // Simulação simples (apenas visual, não altera lógica profunda)
+            el.classList.add('text-white'); // flash
+            setTimeout(() => el.classList.remove('text-white'), 300);
+        }, 1500);
+
+        // --- 4. Chart.js Configuração ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const ctx = document.getElementById('mainChart').getContext('2d');
+
+            // Criar gradiente para o gráfico
+            const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+            gradient.addColorStop(0, 'rgba(0, 200, 83, 0.2)'); // Verde B3 topo
+            gradient.addColorStop(1, 'rgba(0, 200, 83, 0)');   // Transparente base
+
+            // Dados Fictícios Intraday
+            const labels = ["10:00", "10:30", "11:00", "11:30", "12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30"];
+            const dataPoints = [127500, 127800, 127600, 127950, 128100, 128050, 128200, 128350, 128300, 128400, 128450, 128450];
+
+            const mainChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Pontos',
+                        data: dataPoints,
+                        borderColor: '#22c55e', // Green 500
+                        backgroundColor: gradient,
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
+                        fill: true,
+                        tension: 0.4 // Curva suave
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: '#1e293b',
+                            titleColor: '#fff',
+                            bodyColor: '#cbd5e1',
+                            borderColor: '#334155',
+                            borderWidth: 1,
+                            callbacks: {
+                                label: function(context) {
+                                    return context.parsed.y.toLocaleString('pt-BR') + ' pts';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false, drawBorder: false },
+                            ticks: { color: '#64748b', font: { size: 10 } }
+                        },
+                        y: {
+                            grid: { color: '#334155', borderDash: [5, 5] },
+                            ticks: { display: false }, // Ocultar eixo Y para visual mais limpo
+                            beginAtZero: false
+                        }
+                    },
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
+                    }
+                }
+            });
+
+            // Simular atualização do gráfico a cada 3 segundos
+            setInterval(() => {
+                const lastVal = dataPoints[dataPoints.length - 1];
+                const change = (Math.random() - 0.45) * 150; // Variação aleatória
+                const newVal = lastVal + change;
+                
+                // Atualizar texto principal
+                document.getElementById('ibov-price').innerText = newVal.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+                // (Opcional) Poderia empurrar novos dados para o gráfico aqui se fosse live real
+            }, 3000);
+        });
+    </script>
 </body>
 </html>

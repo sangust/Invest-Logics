@@ -1,5 +1,5 @@
 from werkzeug.security import generate_password_hash, check_password_hash #Criar senha hash (Segurança)
-from app.repositories.user_repository import create_user, login_user
+from app.repositories.user_repository import create_user, check_login_user
 from email_validator import validate_email, EmailNotValidError
 
 
@@ -17,3 +17,6 @@ def email_verification(email: str) -> bool:
     except EmailNotValidError:
         return False
     
+def login_user(email:str, password: str):
+    pass_hash = check_login_user(email)
+    return check_password_hash(pass_hash[0], password)
