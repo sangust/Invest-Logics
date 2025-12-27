@@ -21,11 +21,13 @@ def check_login_user(email: tuple):
     cursor = conn.cursor()
 
     cursor.execute('''
-                    SELECT password_hash FROM Users
+                    SELECT email, password_hash FROM Users
                     WHERE email = %s''', (email,))
 
-    pasword_hash = cursor.fetchone()
+    credentials = cursor.fetchall()
     cursor.close()
     conn.close()
-    return pasword_hash
+    print(credentials)
+    return credentials
+
     

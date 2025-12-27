@@ -18,5 +18,12 @@ def email_verification(email: str) -> bool:
         return False
     
 def login_user(email:str, password: str):
-    pass_hash = check_login_user(email)
-    return check_password_hash(pass_hash[0], password)
+    credentials = check_login_user(email) 
+    if len(credentials) > 0 and email == credentials[0][0]:
+        if check_password_hash(credentials[0][1], password):
+            return True
+        else: 
+            return False
+    else: 
+        return False
+        

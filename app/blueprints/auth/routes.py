@@ -50,7 +50,7 @@ def login():
     #busca a senha do usuario para validacao
     #faz a checagem do hash para validar
     user_validation = login_user(email, password)
-    if not user_validation:
-        return jsonify({"error": "Credenciais inválidas"}), 401
-    else:
+    if user_validation:
         return jsonify({"message": "Login realizado com sucesso"}), 200
+    else:
+        return jsonify({"error": "Credenciais inválidas"}), 401
