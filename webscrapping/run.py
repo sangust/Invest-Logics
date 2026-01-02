@@ -1,5 +1,4 @@
 from app.db.connection import get_conn
-import _sqlite3
 import pandas as pd
 import time
 import pyautogui as pag
@@ -7,11 +6,39 @@ import re
 
 conn = get_conn()
 cursor = conn.cursor()
+data=pd.read_sql("SELECT cnpj FROM assets", conn)
+
+df = pd.read_csv("webscrapping/dfp_cia_aberta_composicao_capital_2024.csv",encoding="latin-1", sep=";")#valor total está correto
+df_db = pd.read_sql("SELECT ticker, cnpj from assets", conn)
+lista=[]
+for item in df.itertuples():
+    cnpjs = df_db[df_db["cnpj"]==item[1]]
+    if item[5] != 0:
+        for ticker in df_db.itertuples():
+           if ticker[2] == item[1] and not ticker[1].endswith(("4", "6", "5", "11")):
+            lista.append({"ticker":ticker[1], "qtd_acoes":item[5]-item[8]})    
+
+df_acoes= pd.DataFrame(lista)
+df_acoes.to_excel("acoes_ordinarias.xlsx")
+
+# df = pd.read_sql("SELECT * FROM assets", conn)
+# for item in df.itertuples(index=False):
+#     if item[3] =='None' or item [2]=="nan":
+#         for y in data:
+#             if item[0] == y[0]:
+#                 df.loc[df["ticker"] == item[1], ["cnpj", "nome"]] = [
+#                 y[2],y[3]] 
 
 
+# for item in df.itertuples(index=False):
+#     if item[3] =='None' or item [2]=="nan":
+#         for y in data:
+#             if item[0] == y[0]:
+#                 df.loc[df["ticker"] == item[1], ["cnpj", "nome"]] = [
+#                 y[2],y[3]]        
+                
 
 
-# df = pd.read_excel(r"webscrapping/assetsCnpjNone.xlsx")
 
 # df["cnpj"] = df["cnpj"].astype(str).str.strip()
 # pattern = re.compile(
@@ -21,12 +48,9 @@ cursor = conn.cursor()
 # for item in df.itertuples(index=False):
 #     ticker = item[1]
 #     cnpj = item[2]
-
+#     nome = item[3]
 #     if pattern.match(cnpj):
-#         cursor.execute(
-#             "UPDATE assets SET cnpj = %s WHERE ticker = %s",
-#             (cnpj, ticker)
-#         )
+#         cursor.execute("UPDATE assets SET cnpj = %s, nome=%s  WHERE ticker = %s", (cnpj, nome, ticker))
 
 # conn.commit()
 
