@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <title>InvestLogics - Login</title>
+</head>
+<body>
+
+    <main>
+        <h1>Bem vindo ao InvestLogics!</h1>
+        <h2>Acesse sua conta</h2>
+        <p>Gerencie seus investimentos em tempo real</p>
+
+        <form onsubmit="event.preventDefault();">
+
+            <div class="input-group">
+                <label>E-mail</label>
+                <div class="input-wrapper">
+                    <img src="https://cdn-icons-png.flaticon.com/512/3894/3894024.png" class="field-icon" alt="E-mail">
+                    <input type="email" placeholder="seu@email.com" required>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label>Senha</label>
+                <div class="input-wrapper">
+                    <img src="https://cdn-icons-png.flaticon.com/512/61/61457.png" class="field-icon" alt="Senha">
+                    <input type="password" placeholder="••••••••" required>
+                </div>
+            </div>
+
+            <button type="submit" onclick="enviarParaPython()">
+                ENTRAR
+            </button>
+            
+            <div class="footer-links">
+                <a href="#">Esqueceu a senha?</a>
+            </div>
+        </form>
+
+    </main>
+
+</body>
+</html>
